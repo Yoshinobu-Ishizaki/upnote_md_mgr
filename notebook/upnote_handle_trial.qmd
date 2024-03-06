@@ -122,17 +122,50 @@ RMeCabを使って元文を単語に分けて分かち書きをする。
 改めてデータを読み込む。
 
 ```{r}
-dfm <- read_csv("upnote_text.csv")
+dfm_txt <- read_csv("upnote_text.csv")
 ```
 
 ```{r}
-dfm1 <- dfm |> 
+dfm1 <- dfm_txt |> 
   select(fpath, contents) |> 
   filter(!is.na(contents))  
 ```
 
 コンテンツをRMeCabで分割する。
+tidytextのunnest_tokensにRMeCabを割り当てることができる。
+
 予めNElogd辞書を登録しておくことで、適切な分割が出来るようになっている。
+
+```{r}
+dfm1 |> filter(fpath == "19カギ 調整治具.md") |> 
+   pull(contents) |>
+```
+
+
+```{r}
+"\n大久保氏からの質問に回答。\n\n片持ちでカギ管を支えるタイプの検査治具って、どうしてその形？\n\n→検査治具ではなく、調整治具。\n\n  \n\n最初は検査治具の図面を片っ端から見ていて、参考図として取り上げられている調整治具\n\nTS-J-14840\n\nが写真に酷似しているので、行き当たった。\n\n  \n\nそして、写真そのものは\n\nAS-J-6626であることが、細部形状の比較等でほぼ確信。\n\n同時期に検査治具が集成用として無い（タンポ皿＋カギ用なら6465がある）ので、集成検査治具兼用として設計されたかな。\n\n  \n\n類似品に19648、これは図番のみで空番。\n\n  \n\nそこから発展して、YMPIでカギの検査治具をどうしようかについて、TEAMSチャットでやりとり。" |> 
+
+  tolower() |> 
+  str_replace_all("([a-z])-([jd])-([0-9]{4,5})","\\1\\2\\3") |> 
+  RMeCabC() |> unlist()
+```
+
+
+```{r}
+|> 
+
+|> 
+```
+
+
+```{r}
+```
+
+```{r}
+dfm1 |> filter(fpath == "19カギ 調整治具.md") |> 
+  unnest_tokens(words, contents, token = "regex", pattern = "([a-zA-Z]-[jdJD]-[0-9]+)")
+```
+
 
 ```{r}
 RMeCabC("DOS窓では、基本的には日本語がアウトです", dic = "ipadic-neologd") |> unlist()
