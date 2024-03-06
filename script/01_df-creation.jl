@@ -17,7 +17,7 @@ function convtxt(path)
 
     txt = readlines(path)
 
-    for i in 1:length(txt)
+    for i in eachindex(txt)
         if i > 1
             # skip first line
             s = txt[i]
