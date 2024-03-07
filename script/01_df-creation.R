@@ -2,6 +2,10 @@
 
 library(tidyverse)
 
+# chdir
+if (basename(getwd()) == "script"){
+  setwd("..")
+}
 
 #---- 一通りの処理をする関数 
 
@@ -17,6 +21,7 @@ read_upnote_text <- function(fpath){
   cat_mode <-  FALSE
   title_str <-  "" # default
   tags = c()
+  bdytxt = c()
   
   for (l in d1){
     lno = lno + 1
@@ -30,37 +35,41 @@ read_upnote_text <- function(fpath){
         cc = c()
       }else if(str_detect(l,"---")){
         cat_mode <-  FALSE 
-      }else if(str_detect(l,"^#+ ")){
-        title_str <- str_remove(l,"^#+ ") |> 
-          str_remove_all("[\\p{Cc}\\p{Cf}]") # remove control characters 
         isheader <- FALSE # end of header lines
-        lbdy <- lno
+        next
       }else{
         if(cat_mode){
           cc = c(cc, str_remove(l,"^- "))
         } 
       } 
     }else{ # body
-      # search tag lines
-      if(str_detect(l,"^#[^[:punct:] ]*$")){
+      if(str_detect(l,"^#+ ")){
+        # handle headers
+        bdytxt = c(bdytxt, str_remove(l,"^#+ "))
+      }else if(str_detect(l,"^[\\s\\*]+$")){
+        # ignore ruler line
+        bdytxt = c(bdytxt, str_replace(l,"^[\\s\\*]+$",""))
+      }else if(str_detect(l,"^#[^[:punct:] ]*$")){
+        # search tag lines
         tags <-  c(tags,str_remove(l,"^#"))
-        # replace original line with blank
-        d1[lno-1] <- ""
+      }else{
+        bdytxt = c(bdytxt, l)
       }
     }
   }
   
-  c1 <- str_c(d1[lbdy:endl], collapse = "\n") # contents without headers and tags
+  contents <- str_c(bdytxt, collapse = "\n") # contents without headers and tags
   
   if(str_length(title_str) == 0 ){
-    title_str <- str_remove(fname, ".md$")
+    title_str <- str_remove(fpath, ".md$")
   }
   
   catstr <- str_c(cc, collapse = "|")
   tagstr <- str_c(tags, collapse = "|")
   
-  return(tibble(fpath = fname, title = title_str, update = update_dt, 
-                created = create_dt, category = catstr, tags = tagstr, contents = c1))
+  return(tibble(fpath = fname, update = update_dt, created = create_dt,
+                category = catstr, tags = tagstr,
+                contents = contents))
 }
 
 #---- 全ファイルを対象に一気に処理
@@ -71,4 +80,5 @@ dfm <- all_files |> map(read_upnote_text) |> list_rbind()
 
 # 結果出力
 
-dfm |> write_csv("upnote_text.csv")
+dfm |> write_csv("data/upnote_text.csv")
+

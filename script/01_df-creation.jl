@@ -3,7 +3,11 @@ using DataFrames
 using Dates
 using CSV
 
-upnote_path = "./UpNote/General Space"
+if basename(pwd()) == "notebook"
+    cd("..")
+end 
+
+upnote_path = "UpNote/General Space"
 
 function convtxt(path)
     s = ""
@@ -62,7 +66,7 @@ function convtxt(path)
     contents = join(bdytxt, "\n")
     tags_str = join(tags, "|")
     
-    return(Dict("fpath" => basename(path), "update" => update_dt, "created" => create_dt, "category" => cat_str, "tags" => tags_str, "contents" => contents))
+    return(DataFrame("fpath" => basename(path), "update" => update_dt, "created" => create_dt, "category" => cat_str, "tags" => tags_str, "contents" => contents))
 end
 
 # do excecution
