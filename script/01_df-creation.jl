@@ -1,6 +1,7 @@
 using Glob
 using DataFrames
 using Dates
+using SHA
 using CSV
 
 if basename(pwd()) == "notebook"
@@ -79,5 +80,9 @@ for f in tfiles
     append!(dfm, convtxt(f))
 end
 
-CSV.write("data/upnote_text.csv", dfm)
+# add sha1 column
+dfm2 = transform(dfm, :fpath => (x -> @. bytes2hex(sha1(x))) => :id )
+dfm3 = select(dfm2, "id","fpath","update","created","category","tags","contents")
+
+CSV.write("data/upnote_text.csv", dfm3)
 
