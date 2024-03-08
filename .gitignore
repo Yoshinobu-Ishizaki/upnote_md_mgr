@@ -55,3 +55,7 @@ UpNote*/
 settings.json
 
 test.*
+
+.venv/
+.vscode/
+
