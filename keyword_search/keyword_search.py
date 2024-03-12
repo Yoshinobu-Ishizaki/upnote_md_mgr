@@ -62,7 +62,7 @@ st.set_page_config(layout="wide")
 
 gb = GridOptionsBuilder.from_dataframe(dfm.head(10))
 gb.configure_selection(selection_mode="single", use_checkbox=False)
-
+gb.configure_pagination(paginationAutoPageSize = False, paginationPageSize = 10)
 gridOptions = gb.build()
 
 if 'keyword' not in st.session_state:
@@ -89,7 +89,7 @@ with st.container():
     
     # Upper area for DataFrame
     # st.subheader('DataFrame')
-    grid_response = AgGrid(dfm.head(10),
+    grid_response = AgGrid(dfm.head(30),
                             gridOptions=gridOptions, 
                             enable_enterprise_modules=True, 
                             allow_unsafe_jscode=True, 
