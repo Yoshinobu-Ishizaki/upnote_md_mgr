@@ -2,8 +2,10 @@ import os
 from pathlib import Path
 import polars as pl
 
+import numpy as np
+
 # from shiny.express import input, render, ui
-from shiny import ui, render, App
+from shiny import ui, render, App, reactive
 
 import unicodedata
 import re
@@ -37,9 +39,24 @@ os.chdir(Path(__file__).parent / "..")
 # Step 1: Read a CSV file as a Polars DataFrame "dfm"
 dfm = pl.read_csv("data/upnote_text_split.csv")
 
+def count_words(s,kwd):
+    # count product of found count
+    return np.prod([s.split(" ").count(k) for k in kwd])
+
+def keyword_filter(kwd):
+    """kwd: list of keywords"""
+
+    d1 = dfm.with_columns([
+        pl.col("tokens").map_elements(lambda x: count_words(x, kwd)).alias("wc")
+    ]).filter(pl.col("wc") > 0).sort(by = "wc", descending=True)
+    
+    return d1
+
 app_ui = ui.page_sidebar(
     ui.sidebar(
-        ui.input_text(id = "keyword_input", label= "Search Keywords", value="")
+        ui.input_text(id = "keyword_input", label= "Search Keywords", value=""),
+        ui.output_text(id = "keyword_output"),
+        ui.input_action_button("go", "Search")
     ),
     ui.layout_columns(
         ui.card(ui.output_data_frame("output_dfm"),full_screen=True,)
@@ -47,9 +64,20 @@ app_ui = ui.page_sidebar(
 )
 
 def server(input, output, session):
-    @render.data_frame
-    def output_dfm():
-        return render.DataGrid(dfm)
+    @render.text
+    def keyword_output():
+        return strtrans_text(input.keyword_input())
 
+    @render.data_frame
+    @reactive.event(input.go )
+    def output_dfm():
+
+        kwd = strtrans(input.keyword_input())
+        d = keyword_filter(kwd)
+
+        return render.DataGrid(d, height="600px")
+
+
+# run app
 app = App(app_ui, server)
 
