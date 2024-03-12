@@ -40,18 +40,29 @@ os.chdir(Path(__file__).parent / "..")
 # Step 1: Read a CSV file as a Polars DataFrame "dfm"
 dfm = pd.read_csv("data/upnote_text_split.csv")
 
+# Read original dataframe 
+dfm_org = (pd.read_csv("data/upnote_text.csv"))[["id","contents"]]
+
 def count_words(s,kwd):
     # count product of found count
-    return np.prod([s.split(" ").count(k) for k in kwd])
+    lst = [s.split(" ").count(k) for k in kwd]
+
+    return np.prod(lst)
 
 def keyword_filter(kwd):
     """kwd: list of keywords"""
 
-    d1 = dfm.with_columns([
-        pl.col("tokens").map_elements(lambda x: count_words(x, kwd)).alias("wc")
-    ]).filter(pl.col("wc") > 0).sort(by = "wc", descending=True)
+    d1 = dfm.copy()
     
-    return d1
+    d1['wc'] = d1['tokens'].apply(lambda x: count_words(x, kwd))
+    d2 = (d1[d1.wc > 0]).sort_values(by = "wc", ascending=False)
+    
+    return d2
+
+def get_original_text(id):
+    d1 = dfm_org[dfm_org.id == id]
+    return d1.contents.iloc[0]
+
 
 # --------------------------------------
 # Streamlit panel
@@ -70,15 +81,15 @@ if 'keyword' not in st.session_state:
 
 def update_page():
     """change input text to sudachi normalized text"""
-    st.session_state['keyword'] = strtrans_text(st.session_state.keywordinput)
+    st.session_state['keyword'] = strtrans(st.session_state.keywordinput)
 
 # Create side panel
 with st.sidebar:
     st.header('Side Panel')
     
-    text_input = st.text_input('Enter some text', key = "keywordinput", on_change=update_page)
+    text_input = st.text_input('Search text', key = "keywordinput", on_change=update_page)
 
-    text_output = st.text_input("keyword text", disabled=True, placeholder=st.session_state.keyword)
+    text_output = st.text_input("Normalized keyword", disabled=True, value = " ".join(st.session_state.keyword))
 
     # multi selectors
     showcols = st.multiselect('Columns', dfm.columns, default=['fpath','created','category', 'tags','tokens'] ) 
@@ -93,7 +104,9 @@ with st.container():
     gb.configure_column('tokens', width = 500)
     gridOptions = gb.build()
 
-    grid_response = AgGrid(dfm.head(30),
+    df_filtered = keyword_filter(st.session_state.keyword)
+    
+    grid_response = AgGrid(df_filtered.head(30),
                             gridOptions=gridOptions, 
                             enable_enterprise_modules=True, 
                             allow_unsafe_jscode=True, 
@@ -105,11 +118,15 @@ with st.container():
     # Bottom area for multi-line text
     st.subheader('Original text of selected row')
 
-    if len(selected_rows) > 0:
-        tk = selected_rows[0]["tokens"]
-        text_area = st.text_area('outtext',tk, disabled=True, label_visibility='hidden', height=160)
-    else:
-        text_area = st.text_area('outtext',"", disabled=True, label_visibility='hidden', height=160)
+    with st.container(height=250):
+        if len(selected_rows) > 0:
+            iid = selected_rows[0]["id"]
+            txt = get_original_text(iid)
+
+            print(txt)
+            text_area = st.markdown(txt)
+        else:
+            text_area = st.markdown("")
 
 
 
