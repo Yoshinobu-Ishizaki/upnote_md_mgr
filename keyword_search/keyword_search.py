@@ -63,7 +63,7 @@ st.set_page_config(layout="wide")
 gb = GridOptionsBuilder.from_dataframe(dfm.head(10))
 gb.configure_selection(selection_mode="single", use_checkbox=False)
 gb.configure_pagination(paginationAutoPageSize = False, paginationPageSize = 10)
-gridOptions = gb.build()
+gb.configure_default_column(initialHide = True)
 
 if 'keyword' not in st.session_state:
     st.session_state['keyword'] = ''
@@ -88,15 +88,28 @@ with st.container():
     st.header('Upnote Data Viewer')
     
     # Upper area for DataFrame
-    # st.subheader('DataFrame')
+    
+    gb.configure_columns(showcols, hide = False)
+    gb.configure_column('tokens', width = 500)
+    gridOptions = gb.build()
+
     grid_response = AgGrid(dfm.head(30),
                             gridOptions=gridOptions, 
                             enable_enterprise_modules=True, 
                             allow_unsafe_jscode=True, 
                             update_mode=GridUpdateMode.SELECTION_CHANGED)
     
+
+    selected_rows = grid_response["selected_rows"]
+
     # Bottom area for multi-line text
     st.subheader('Original text of selected row')
-    text_area = st.text_area('outtext', disabled=True, label_visibility='hidden', height=160)
+
+    if len(selected_rows) > 0:
+        tk = selected_rows[0]["tokens"]
+        text_area = st.text_area('outtext',tk, disabled=True, label_visibility='hidden', height=160)
+    else:
+        text_area = st.text_area('outtext',"", disabled=True, label_visibility='hidden', height=160)
+
 
 
