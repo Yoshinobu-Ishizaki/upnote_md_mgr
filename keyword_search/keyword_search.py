@@ -59,9 +59,27 @@ def keyword_filter(kwd):
     
     return d2
 
-def get_original_text(id):
+def get_original_text(id, kwd):
     d1 = dfm_org[dfm_org.id == id]
-    return d1.contents.iloc[0]
+    txt = d1.contents.iloc[0]
+
+    tlist = []
+
+    # convert txt by hilighting keywords
+    s1 = unicodedata.normalize("NFKC",txt).lower()
+    s2 = re.sub(r"([a-z]{2})-([djm])-([0-9]{4,5})", r"\1\2\3",s1) # replace drawing number
+    tkn = tokenizer.tokenize(s2) # tokenize
+    for t in tkn:
+        w = t.surface()
+        if not w.isspace():
+            if t.part_of_speech()[0] in ["名詞","形容詞","動詞"]:
+                n = t.normalized_form()
+                if(n in kwd ):
+                    w = f":red[{n}]"
+
+        tlist.append(w)                
+
+    return "".join(tlist)
 
 
 # --------------------------------------
@@ -116,14 +134,13 @@ with st.container():
     selected_rows = grid_response["selected_rows"]
 
     # Bottom area for multi-line text
-    st.subheader('Original text of selected row')
+    st.subheader('Normalized text of selected row')
 
     with st.container(height=250):
         if len(selected_rows) > 0:
             iid = selected_rows[0]["id"]
-            txt = get_original_text(iid)
+            txt = get_original_text(iid, st.session_state.keyword)
 
-            print(txt)
             text_area = st.markdown(txt)
         else:
             text_area = st.markdown("")
