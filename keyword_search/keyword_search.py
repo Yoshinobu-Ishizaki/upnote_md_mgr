@@ -14,41 +14,61 @@ from st_aggrid import AgGrid
 from st_aggrid.grid_options_builder import GridOptionsBuilder
 from st_aggrid.shared import GridUpdateMode
 
-dict = sudachipy.Dictionary()
-tokenizer = dict.create()
+from rank_bm25 import BM25Okapi
 
-# change working directory
-os.chdir(Path(__file__).parent / "..")
+poc = ["名詞","形容詞","動詞","接尾辞","接頭辞"]
 
-# Step 1: Read a CSV file as a Polars DataFrame "dfm"
-dfm = pd.read_csv("data/upnote_text_split.csv")
-
-# Read original dataframe 
-dfm_org = (pd.read_csv("data/upnote_text.csv"))[["id","contents"]]
+# Set page layout
+st.set_page_config(layout="wide")
 
 # -----------------------------------------
 # some function defintion
 # -----------------------------------------
 
+@st.cache_resource
+def create_tokenizer():
+    dict = sudachipy.Dictionary()
+    tokenizer = dict.create()
 
+    return tokenizer
+
+@st.cache_data
+def read_split_data(path):
+    d = pd.read_csv(path).assign(score = 0) 
+    return d
+
+@st.cache_data
+def read_text_data(path):
+    d = pd.read_csv(path)[["id","contents"]]
+    return d
+
+@st.cache_resource
+def create_bm25(txtarray):
+    # create okapi_bm25 search engine object
+    # txtarray : list of space delimitered text 
+    corpus = [doc.split(" ") for doc in txtarray]
+    bm25 = BM25Okapi(corpus)
+    return bm25
+
+# not used 
 def count_words(s,kwd):
     # count product of found count
     lst = [s.split(" ").count(k) for k in kwd]
 
     return np.prod(lst)
 
-def keyword_filter(kwd):
-    """kwd: list of keywords"""
+@st.cache_data
+def filter_dataframe(df, _bm25,  kwd):
+    # do not check _bm25 for cache 
+    d1 = df.copy()
 
     if len(kwd) > 0:
-        d1 = dfm.copy()
-        
-        d1['wc'] = d1['tokens'].apply(lambda x: count_words(x, kwd))
-        d2 = (d1[d1.wc > 0]).sort_values(by = "wc", ascending=False)
-    
-        return d2
+        d1['score'] = _bm25.get_scores(kwd)
+        d1 = (d1[d1.score > 0]).sort_values(by = "score", ascending = False )
     else:
-        return dfm
+        d1['score'] = 0
+
+    return d1
 
 def normalize_word(txt):
     # convert txt by hilighting keywords
@@ -76,14 +96,14 @@ def strtrans(s):
     for t in tkn:
         w = t.surface()
         if not w.isspace():
-            if t.part_of_speech()[0] in ["名詞","形容詞","動詞","接尾辞"]:
+            if t.part_of_speech()[0] in poc:
                 n = t.normalized_form()
                 tokens.append(n)
     
     return (tokens)
 
-
-def get_original_text(id, kwd):
+# to display original contents
+def get_original_text(dfm_org, id, kwd):
     d1 = dfm_org[dfm_org.id == id]
     txt = d1.contents.iloc[0]
 
@@ -96,12 +116,14 @@ def get_original_text(id, kwd):
             if not w.isspace():
                 # just ignore tabs and spaces
                 # if not w.isspace():
-                if t.part_of_speech()[0] in ["名詞","形容詞","動詞","接尾辞"]:
+                if t.part_of_speech()[0] in poc:
                     n = t.normalized_form()
                     if(n in kwd ):
                         w = f":red[{n}]"
     
                 tlist.append(w)
+            else:
+                tlist.append("\n\n") # add LF when space text
 
         txt = "".join(tlist)
         return txt
@@ -109,17 +131,26 @@ def get_original_text(id, kwd):
         return txt
 
 # -------------------------------------
-# tokenize original data
+# initialize data
 # -------------------------------------
-# due to streamlit rerun, this is slower
-# dfm_org['normtext'] = dfm_org['contents'].apply(normalize_word_chunk)
+
+# change working directory
+os.chdir(Path(__file__).parent / "..")
+
+tokenizer = create_tokenizer()
+
+# Step 1: Read a CSV file as a Polars DataFrame "dfm"
+dfm = read_split_data("data/upnote_text_split.csv")
+
+# Read original dataframe 
+dfm_org = read_text_data("data/upnote_text.csv")
+
+# create bm25 object
+bm25 = create_bm25(dfm.tokens)
 
 # --------------------------------------
 # Streamlit panel
 # --------------------------------------
-
-# Set page layout
-st.set_page_config(layout="wide")
 
 gb = GridOptionsBuilder.from_dataframe(dfm.head())
 gb.configure_selection(selection_mode="single", use_checkbox=False)
@@ -154,7 +185,7 @@ with st.container():
     gb.configure_column('tokens', width = 500)
     gridOptions = gb.build()
 
-    df_filtered = keyword_filter(st.session_state.keyword)
+    df_filtered = filter_dataframe(dfm, bm25, st.session_state.keyword)
     
     grid_response = AgGrid(df_filtered,
                             gridOptions=gridOptions, 
@@ -171,7 +202,7 @@ with st.container():
     with st.container(height=250):
         if len(selected_rows) > 0:
             iid = selected_rows[0]["id"]
-            txt = get_original_text(iid, st.session_state.keyword)
+            txt = get_original_text(dfm_org, iid, st.session_state.keyword)
 
             text_area = st.markdown(txt)
         else:
