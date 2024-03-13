@@ -17,23 +17,6 @@ from st_aggrid.shared import GridUpdateMode
 dict = sudachipy.Dictionary()
 tokenizer = dict.create()
 
-def strtrans(s):
-    tokens = [] # normalized token
-    s1 = unicodedata.normalize("NFKC",s).lower()
-    s2 = re.sub(r"([a-z]{2})-([djm])-([0-9]{4,5})", r"\1\2\3",s1) # replace drawing number
-    tkn = tokenizer.tokenize(s2)
-    for t in tkn:
-        w = t.surface()
-        if not w.isspace():
-            if t.part_of_speech()[0] in ["名詞","形容詞","動詞"]:
-                n = t.normalized_form()
-                tokens.append(n)
-    
-    return (tokens)
-
-def strtrans_text(s):
-    return(" ".join(strtrans(s)))
-
 # change working directory
 os.chdir(Path(__file__).parent / "..")
 
@@ -42,6 +25,11 @@ dfm = pd.read_csv("data/upnote_text_split.csv")
 
 # Read original dataframe 
 dfm_org = (pd.read_csv("data/upnote_text.csv"))[["id","contents"]]
+
+# -----------------------------------------
+# some function defintion
+# -----------------------------------------
+
 
 def count_words(s,kwd):
     # count product of found count
@@ -59,28 +47,69 @@ def keyword_filter(kwd):
     
     return d2
 
-def get_original_text(id, kwd):
-    d1 = dfm_org[dfm_org.id == id]
-    txt = d1.contents.iloc[0]
-
-    tlist = []
-
+def normalize_word(txt):
     # convert txt by hilighting keywords
-    s1 = unicodedata.normalize("NFKC",txt).lower()
-    s2 = re.sub(r"([a-z]{2})-([djm])-([0-9]{4,5})", r"\1\2\3",s1) # replace drawing number
+    s1 = unicodedata.normalize("NFKC",txt).upper() 
+    s2 = re.sub(r"([A-Z]{2})-([DJM].*)", r"\1\2",s1) # replace drawing number
     tkn = tokenizer.tokenize(s2) # tokenize
+ 
+    return list(tkn)
+
+def normalize_word_chunk(s):
+    if len(s) > 2**14 -1:
+        tokens = []
+        ss = s.split("\n")
+        for sl in ss:
+            tk =  normalize_word(sl) 
+            tokens = tokens + tk
+    else:
+        tokens = normalize_word(s)
+
+    return tokens
+
+def strtrans(s):
+    tokens = []
+    tkn = normalize_word_chunk(s) # normalized token
     for t in tkn:
         w = t.surface()
         if not w.isspace():
             if t.part_of_speech()[0] in ["名詞","形容詞","動詞"]:
                 n = t.normalized_form()
-                if(n in kwd ):
-                    w = f":red[{n}]"
+                tokens.append(n)
+    
+    return (tokens)
 
-        tlist.append(w)                
 
-    return "".join(tlist)
+def get_original_text(id, kwd):
+    d1 = dfm_org[dfm_org.id == id]
+    txt = d1.contents.iloc[0]
 
+    if len(kwd) > 0:
+        tlist = []
+        tkn = normalize_word_chunk(txt)
+
+        for t in tkn:
+            w = t.surface()
+            if not w.isspace():
+                # just ignore tabs and spaces
+                # if not w.isspace():
+                if t.part_of_speech()[0] in ["名詞","形容詞","動詞"]:
+                    n = t.normalized_form()
+                    if(n in kwd ):
+                        w = f":red[{n}]"
+    
+                tlist.append(w)
+
+        txt = "".join(tlist)
+        return txt
+    else:
+        return txt
+
+# -------------------------------------
+# tokenize original data
+# -------------------------------------
+# due to streamlit rerun, this is slower
+# dfm_org['normtext'] = dfm_org['contents'].apply(normalize_word_chunk)
 
 # --------------------------------------
 # Streamlit panel
@@ -89,7 +118,7 @@ def get_original_text(id, kwd):
 # Set page layout
 st.set_page_config(layout="wide")
 
-gb = GridOptionsBuilder.from_dataframe(dfm.head(10))
+gb = GridOptionsBuilder.from_dataframe(dfm.head())
 gb.configure_selection(selection_mode="single", use_checkbox=False)
 gb.configure_pagination(paginationAutoPageSize = False, paginationPageSize = 10)
 gb.configure_default_column(initialHide = True)
