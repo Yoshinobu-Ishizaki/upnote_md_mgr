@@ -72,8 +72,8 @@ def filter_dataframe(df, _bm25,  kwd):
 
 def normalize_word(txt):
     # convert txt by hilighting keywords
-    s1 = unicodedata.normalize("NFKC",txt).upper() 
-    s2 = re.sub(r"([A-Z]{2})-([DJM].*)", r"\1\2",s1) # replace drawing number
+    s1 = unicodedata.normalize("NFKC",txt).lower() 
+    s2 = re.sub(r"([a-z]{2})-([djm].*)", r"\1\2",s1) # replace drawing number
     tkn = tokenizer.tokenize(s2) # tokenize
  
     return list(tkn)
@@ -168,12 +168,12 @@ def update_page():
 with st.sidebar:
     st.header('Side Panel')
     
-    text_input = st.text_input('Search text', key = "keywordinput", on_change=update_page)
+    text_input = st.text_input('Search text for keywords', key = "keywordinput", on_change=update_page)
 
-    text_output = st.text_input("Normalized keyword", disabled=True, value = " ".join(st.session_state.keyword))
+    text_output = st.text_input("Normalized keywords", disabled=True, value = " ".join(st.session_state.keyword))
 
     # multi selectors
-    showcols = st.multiselect('Columns', dfm.columns, default=['fpath','created','category', 'tags','tokens'] ) 
+    showcols = st.multiselect('Columns', dfm.columns, default=['fpath','created','category', 'tags','tokens','score'] ) 
 
 # Create main panel
 with st.container():
@@ -183,6 +183,7 @@ with st.container():
     
     gb.configure_columns(showcols, hide = False)
     gb.configure_column('tokens', width = 500)
+    gb.configure_columns(['tags','score'], width = 100)
     gridOptions = gb.build()
 
     df_filtered = filter_dataframe(dfm, bm25, st.session_state.keyword)
