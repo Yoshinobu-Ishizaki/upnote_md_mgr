@@ -40,12 +40,15 @@ def count_words(s,kwd):
 def keyword_filter(kwd):
     """kwd: list of keywords"""
 
-    d1 = dfm.copy()
+    if len(kwd) > 0:
+        d1 = dfm.copy()
+        
+        d1['wc'] = d1['tokens'].apply(lambda x: count_words(x, kwd))
+        d2 = (d1[d1.wc > 0]).sort_values(by = "wc", ascending=False)
     
-    d1['wc'] = d1['tokens'].apply(lambda x: count_words(x, kwd))
-    d2 = (d1[d1.wc > 0]).sort_values(by = "wc", ascending=False)
-    
-    return d2
+        return d2
+    else:
+        return dfm
 
 def normalize_word(txt):
     # convert txt by hilighting keywords
@@ -153,7 +156,7 @@ with st.container():
 
     df_filtered = keyword_filter(st.session_state.keyword)
     
-    grid_response = AgGrid(df_filtered.head(30),
+    grid_response = AgGrid(df_filtered,
                             gridOptions=gridOptions, 
                             enable_enterprise_modules=True, 
                             allow_unsafe_jscode=True, 
