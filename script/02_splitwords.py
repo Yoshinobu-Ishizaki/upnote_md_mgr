@@ -12,7 +12,7 @@ def strtrans(s):
         - 英数字は小文字化
         - 図番に相当するas-j-99999の形のコードをasj99999型に変換
         - sudachiで分かち書き
-        - 名詞・形容詞・動詞のみを抽出
+        - 名詞・形容詞・動詞・"接尾辞"のみを抽出
         - 正規化トークンに変換
         一連の変換を関数にして、それを各行のデータに適用する。
     """
@@ -23,7 +23,7 @@ def strtrans(s):
     for t in tkn:
         w = t.surface()
         if not w.isspace():
-            if t.part_of_speech()[0] in ["名詞","形容詞","動詞"]:
+            if t.part_of_speech()[0] in ["名詞","形容詞","動詞","接尾辞"]:
                 n = t.normalized_form()
                 tokens.append(n)
     

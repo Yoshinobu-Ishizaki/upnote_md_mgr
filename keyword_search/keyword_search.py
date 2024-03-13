@@ -76,7 +76,7 @@ def strtrans(s):
     for t in tkn:
         w = t.surface()
         if not w.isspace():
-            if t.part_of_speech()[0] in ["名詞","形容詞","動詞"]:
+            if t.part_of_speech()[0] in ["名詞","形容詞","動詞","接尾辞"]:
                 n = t.normalized_form()
                 tokens.append(n)
     
@@ -96,7 +96,7 @@ def get_original_text(id, kwd):
             if not w.isspace():
                 # just ignore tabs and spaces
                 # if not w.isspace():
-                if t.part_of_speech()[0] in ["名詞","形容詞","動詞"]:
+                if t.part_of_speech()[0] in ["名詞","形容詞","動詞","接尾辞"]:
                     n = t.normalized_form()
                     if(n in kwd ):
                         w = f":red[{n}]"
