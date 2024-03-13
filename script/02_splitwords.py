@@ -6,6 +6,8 @@ import os, os.path
 import unicodedata
 import re
 
+poc = ["名詞","形容詞","動詞","接尾辞","接頭辞"]
+
 def strtrans(s):
     """キーワードを以下の手順で正規化されたスペース区切りの文に変換する。
         - ユニコード文字列として正規化(全角英数は半角へ、半角カナなどは全角へ)
@@ -23,7 +25,7 @@ def strtrans(s):
     for t in tkn:
         w = t.surface()
         if not w.isspace():
-            if t.part_of_speech()[0] in ["名詞","形容詞","動詞","接尾辞"]:
+            if t.part_of_speech()[0] in poc:
                 n = t.normalized_form()
                 tokens.append(n)
     
