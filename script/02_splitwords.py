@@ -17,8 +17,8 @@ def strtrans(s):
         一連の変換を関数にして、それを各行のデータに適用する。
     """
     tokens = [] # normalized token
-    s1 = unicodedata.normalize("NFKC",s).lower()
-    s2 = re.sub(r"([a-z]{2})-([djm])-([0-9]{4,5})", r"\1\2\3",s1) # replace drawing number
+    s1 = unicodedata.normalize("NFKC",s).upper()
+    s2 = re.sub(r"([A-Z]{2})-([DJM])-([0-9]{4,5})", r"\1\2\3",s1) # replace drawing number
     tkn = tokenizer.tokenize(s2)
     for t in tkn:
         w = t.surface()
