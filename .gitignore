@@ -51,6 +51,8 @@ rsconnect/
 # ignore UpNote data folder 
 UpNote*/
 
+data/
+
 .ipynb_checkpoints
 settings.json
 
