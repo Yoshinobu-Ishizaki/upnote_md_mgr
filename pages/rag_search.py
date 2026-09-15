@@ -331,7 +331,7 @@ if new_search:
         client = anthropic.Anthropic(api_key=api_key)
         message = client.messages.create(
             model=get_claude_model(),
-            max_tokens=2048,
+            max_tokens=8000,
             system=(
                 "提供されたノートのコンテキストのみを使って質問に答えてください。"
                 "コンテキストに答えが見つからない場合はその旨を伝えてください。"
@@ -373,9 +373,11 @@ if new_search:
         (block.text for block in message.content if block.type == "text"),
         "",
     )
+    answer_incomplete = not answer_text and message.stop_reason == "max_tokens"
 
     st.session_state["rag_results"] = {
         "answer": answer_text,
+        "answer_incomplete": answer_incomplete,
         "result_df": result_df,
         "included_ids": included_ids,
         "fallback_truncated": fallback_truncated,
@@ -402,7 +404,13 @@ if st.session_state.get("auto_date_notice"):
     )
 
 st.subheader("回答")
-st.markdown(res["answer"])
+if res.get("answer_incomplete"):
+    st.warning(
+        "回答の生成がトークン上限に達したため完了しませんでした。"
+        "質問を簡潔にするか、参照ノート数を減らして再度お試しください。"
+    )
+else:
+    st.markdown(res["answer"])
 
 result_df = res["result_df"]
 included_ids = res["included_ids"]
